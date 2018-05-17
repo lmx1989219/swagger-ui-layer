@@ -144,23 +144,40 @@ function changeParameterType(el) {
         };
         var body = $(".reqBody").text();
         if (body != "") {
-            var bodyParam = body.substring(body.lastIndexOf("/") + 1, body.length);
+            var bodyParam = getSwaggerPath(body);
             $("#text_tp_val_" + operationId).jsonViewer(reqResolver(bodyParam, {}), options);
         }
     }
     $("#pt_form_" + operationId).addClass("layui-btn-primary").removeClass("layui-btn-normal");
 }
 
-function reqResolver(req, jsonData) {
+function reqResolver(req, jsonData, innerObj) {
     var obj = swaggerData.definitions[req]["properties"];
-    //循环对象，如果key为obj继续循环。
     for (var key in obj) {
-        if (typeof obj[key] == "object" && obj[key].type == "object") {
-            reqResolver(obj[key], jsonData);
-        } else {
-            jsonData[key] = obj[key].type;
+        if (typeof obj[key] == "object" && obj[key]["$ref"]) {
+            var innerObj = {};
+            jsonData[key] = innerObj;
+            var k = getSwaggerPath(obj[key]["$ref"]);
+            reqResolver(k, jsonData, innerObj);
+        } else if (typeof obj[key] == "object" && (obj[key].type == "string" || obj[key].type == "integer" || obj[key].type == "number")) {
+            if (innerObj instanceof Array) {
+                var item = {};
+                item[key] = obj[key].type;
+                innerObj.push(item);
+            } else if (innerObj instanceof Object)
+                innerObj[key] = obj[key].type;
+            else
+                jsonData[key] = obj[key].type;
+        } else if (typeof obj[key] == "object" && obj[key].type == "array") {
+            var innerObj = [];
+            jsonData[key] = innerObj;
+            var k = getSwaggerPath(obj[key]["items"]["$ref"]);
+            reqResolver(k, jsonData, innerObj);
         }
     }
-    //返回最终的请求对象
     return jsonData;
+}
+
+function getSwaggerPath(path) {
+    return path.substring(path.lastIndexOf("/") + 1);
 }
