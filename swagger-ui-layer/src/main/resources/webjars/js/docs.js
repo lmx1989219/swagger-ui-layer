@@ -171,8 +171,12 @@ function reqResolver(req, jsonData, innerObj) {
         } else if (typeof obj[key] == "object" && obj[key].type == "array") {
             var innerObj = [];
             jsonData[key] = innerObj;
-            var k = getSwaggerPath(obj[key]["items"]["$ref"]);
-            reqResolver(k, jsonData, innerObj);
+            if (obj[key]["items"]["$ref"]) {
+                var k = getSwaggerPath();
+                reqResolver(k, jsonData, innerObj);
+            } else {
+                jsonData[key] = [];
+            }
         }
     }
     return jsonData;
